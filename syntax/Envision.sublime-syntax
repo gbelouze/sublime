@@ -25,6 +25,7 @@ contexts:
     - include: consts
     - include: keywords
     - include: operator
+    - include: call
     - include: brackets
     - include: numbers
     - include: strings
@@ -36,6 +37,7 @@ contexts:
       pop: true
 
   declare_function_ident:
+    - include: autodiff
     - match: '\b[a-zA-Z0-9_]+\b'
       scope: entity.name.function.envision
       pop: true
@@ -61,7 +63,7 @@ contexts:
     - match: '\bwith\b'
       scope: keyword.control.envision
       set: main
-    - match: '\b(mode|learningRate|epochs|pure)\b'
+    - match: '\b(mode|learningRate|epochs|validation)\b'
       scope: variable.parameter.envision
     - include: base
 
@@ -78,6 +80,13 @@ contexts:
         - declare_function_ident
 
   def:
+    - match: '\b(def) (autodiff) (pure)\b'
+      captures:
+        1: keyword.declaration.envision
+        2: meta.tag.envision
+        3: meta.tag.envision
+      push:
+        - declare_function_ident
     - match: '\bdef\b'
       scope: keyword.declaration.envision
       push:
@@ -153,7 +162,15 @@ contexts:
          2: punctuation.section.arguments.begin.envision
       push: inside_call
 
+  call:
+    - match: '([a-z][a-zA-Z0-9_]*)(\()'
+      captures:
+        1: entity.name.function.envision
+        2: punctuation.section.parens.begin.envision
+      push: inside_call
+
   inside_call:
+    - meta_scope: meta.function.parameters.envision
     - match: '\)'
       scope: punctuation.section.arguments.end.envision
       pop: true
@@ -219,7 +236,7 @@ contexts:
     - match: 'script\b'
       scope: markup.heading.envision
       set: main
-    - match: '(refresh|in|out|multisize|runstart|dashboard|optimmetrics|slice|stylecode|trans)\b'
+    - match: '(refresh|in|out|multisize|runstart|dashboard|optimmetrics|slice|stylecode|trans|warn|error)\b'
       scope: markup.heading.envision
       set:
         - meta_scope: comment.block.envision
