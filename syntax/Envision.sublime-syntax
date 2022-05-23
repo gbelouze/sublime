@@ -1,0 +1,231 @@
+%YAML 1.2
+---
+# See http://www.sublimetext.com/docs/3/syntax.html
+file_extensions:
+  - nvn
+scope: source.envision
+
+contexts:
+  # The prototype context is prepended to all contexts but those setting
+  # meta_include_prototype: false.
+  prototype:
+    - include: comments
+
+  main:
+    # The main context is the initial starting point of our syntax.
+    # Include other contexts from here (or specify them directly).
+    - include: test_control
+    - include: autodiff
+    - include: table
+    - include: def
+    - include: show
+    - include: base
+
+  base:
+    - include: consts
+    - include: keywords
+    - include: operator
+    - include: brackets
+    - include: numbers
+    - include: strings
+    - include: ident
+
+  declare_ident:
+    - match: '\b[a-zA-Z0-9_]+\b'
+      scope: entity.name.class.envision
+      pop: true
+
+  declare_function_ident:
+    - match: '\b[a-zA-Z0-9_]+\b'
+      scope: entity.name.function.envision
+      pop: true
+
+  ident:
+    - match: '\b([A-Z][a-zA-Z0-9_]+)([.])([A-Z][a-zA-Z0-9_]*)\b'
+      captures:
+        1: entity.name.class.envision
+        2: punctuation.accessor.dot.envision
+        3: entity.name.envision
+    - match: '\b[a-zA-Z0-9_]+\b'
+      scope: entity.name.envision
+
+  autodiff:
+    - match: '\bautodiff\b'
+      scope: keyword.declaration.envision
+      push:
+        - inside_autodiff_decl
+        - declare_ident
+
+  inside_autodiff_decl:
+    - meta_scope: meta.function.parameters.envision
+    - match: '\bwith\b'
+      scope: keyword.control.envision
+      set: main
+    - match: '\b(mode|learningRate|epochs|pure)\b'
+      scope: variable.parameter.envision
+    - include: base
+
+  table:
+    - match: '\btable\b'
+      scope: keyword.declaration.envision
+      push:
+        - declare_ident
+
+  show:
+    - match: '\bshow\b'
+      scope: keyword.declaration.envision
+      push:
+        - declare_function_ident
+
+  def:
+    - match: '\bdef\b'
+      scope: keyword.declaration.envision
+      push:
+        - declare_function_ident
+
+  brackets:
+    - match: '\('
+      scope: punctuation.section.parens.begin.envision
+    - match: '\)'
+      scope: punctuation.section.parens.end.envision
+    - match: '\[\|'
+      scope: punctuation.definition.array.begin.envision
+    - match: '\|\]'
+      scope: punctuation.definition.array.end.envision
+    - match: '\['
+      scope: punctuation.section.brackets.begin.envision
+      push: inside_access
+
+  inside_access:
+    - match: '\]'
+      scope: punctuation.section.brackets.end.envision
+      pop: true
+    - match: ','
+      scope: punctuation.separator.arguments.envision
+    - match: '\.\.'
+      scope: punctuation.separator.slice.envision
+    - match: '[a-zA-Z0-9_]+'
+      scope: entity.name.union.envision
+    - include: base
+
+  operator:
+    - match: ':'
+      scope: punctuation.separator.key-value.envision
+    - match: '(==)|(>=)|(<=)|<|>'
+      scope: punctuation.comparison.envision
+    - match: '='
+      scope: punctuation.definition.envision
+    - match: '\b(not|or|and)\b'
+      scope: keyword.operator.logical.envision
+    - match: 'mod|[+-/\\*]'
+      scope: keyword.operator.arithmetic.envision
+    - match: ','
+      scope: punctuation.separator.sequence.envision
+
+  keywords:
+    # Keywords are if, else for and while.
+    # Note that blackslashes don't need to be escaped within single quoted
+    # strings in YAML. When using single quoted strings, only single quotes
+    # need to be escaped: this is done by using two single quotes next to each
+    # other.
+    - match: '\b(when|where|order|with|into|by|at|as|desc)\b'
+      scope: keyword.control.envision
+    - match: '\b(const|group|keep|else|return|draw|loop|params|match|span|expect|read|each|loop|default|if|sort|over|cross|scan|import|export|montecarlo|sample|then|schema|write|delete)\b'
+      scope: keyword.declaration.envision
+    - match: '\b(in|auto|small|max)\b'
+      scope: keyword.operator.logical.envision
+    - match: '\b(fail)\b'
+      scope: keyword.control.exception.envision
+
+  consts:
+    - match: '\b(true|false)\b'
+      scope: constant.language.boolean.envision
+    - match: '\b(loglikelihood)(\.)(normal|poisson|negativeBinomial|zeroInflateNegativeBinomial|loglogistic)(\()'
+      captures:
+        1: support.function.builtin.envision
+        2: punctuation.accessor.dot.envision
+        3: support.function.builtin.envision
+        4: punctuation.section.arguments.begin.envision
+      push: inside_call
+    - match: '\b(abs|isnan|loggamma|square|weekdaynum|single|sum|fastsum|product|avg|any|ratio|all|argfirst|enumerate|rank|min|max|count|distinct|mode|aresame|same|argmin|argmax|last|first|smudge|expsmooth|partition|rgb|dispersion|yearstart|yearend|sliceUrl)(\()'
+      captures:
+         1: support.function.builtin.envision
+         2: punctuation.section.arguments.begin.envision
+      push: inside_call
+
+  inside_call:
+    - match: '\)'
+      scope: punctuation.section.arguments.end.envision
+      pop: true
+    - match: ','
+      scope: punctuation.separator.arguments.envision
+    - include: base
+
+  numbers:
+    - match: '\b(-)?[0-9.]+(\b|k|m)'
+      scope: constant.numeric.envision
+    - match: '#[0-9A-F]+'
+      scope: constant.numeric.colorcode.envision
+
+  strings:
+    # Strings begin and end with quotes, and use backslashes as an escape
+    # character.
+    - match: '"'
+      scope: punctuation.definition.string.begin.envision
+      push: inside_string
+
+  inside_string:
+    - meta_include_prototype: false
+    - meta_scope: string.quoted.double.envision
+    - match: '\{'
+      scope: punctuation.section.interpolation.begin.envision
+      set: interpolate
+    - match: '\.'
+      scope: constant.character.escape.envision
+    - match: '"'
+      scope: punctuation.definition.string.end.envision
+      pop: true
+
+  interpolate:
+    - meta_scope: meta.interpolation.envision
+    - match: '\}'
+      scope: punctuation.section.interpolation.end.envision
+      set: inside_string
+
+  comments:
+    # Comments begin with a '//' and finish at the end of the line.
+    - match: '//'
+      scope: punctuation.definition.comment.envision
+      push:
+        # This is an anonymous context push for brevity.
+        - meta_scope: comment.line.double-slash.envision
+        - match: $\n?
+          pop: true
+    # Comments between /* and */
+    - match: '/\*'
+      scope: punctuation.definition.comment.envision
+      push:
+        - meta_scope: comment.block.envision
+        - match: '\*/'
+          pop: true
+
+  test_control:
+    # Parse the test annotations that take the form '@...'
+    - match: '^@'
+      scope: punctuation.definition.annotation
+      set: test_decl
+
+  test_decl:
+    - match: 'script\b'
+      scope: markup.heading.envision
+      set: main
+    - match: '(refresh|in|out|multisize|runstart|dashboard)\b'
+      scope: markup.heading.envision
+      set:
+        - meta_scope: comment.block.envision
+        - include: test_control
+    - match: '[a-z]+'
+      scope: invalid.envision
+      set:
+        - meta_scope: comment.block.envision
+        - include: test_control
