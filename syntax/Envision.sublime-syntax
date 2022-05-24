@@ -63,7 +63,7 @@ contexts:
     - match: '\bwith\b'
       scope: keyword.control.envision
       set: main
-    - match: '\b(mode|learningRate|epochs|validation)\b'
+    - match: '\b(mode|learningRate|epochs|validation|batch)\b'
       scope: variable.parameter.envision
     - include: base
 
@@ -141,7 +141,7 @@ contexts:
       scope: keyword.control.envision
     - match: '\b(const|group|keep|else|return|draw|loop|params|match|span|expect|read|each|loop|default|if|sort|over|cross|scan|import|export|montecarlo|sample|then|schema|write|delete)\b'
       scope: keyword.declaration.envision
-    - match: '\b(in|auto|small|max)\b'
+    - match: '\b(in|auto|small|max|abstract)\b'
       scope: keyword.operator.logical.envision
     - match: '\b(fail)\b'
       scope: keyword.control.exception.envision
@@ -236,12 +236,19 @@ contexts:
     - match: 'script\b'
       scope: markup.heading.envision
       set: main
-    - match: '(refresh|in|out|multisize|runstart|dashboard|optimmetrics|slice|stylecode|trans|warn|error)\b'
+    - match: '(in|out) (([a-zA-Z0-9_]|\[|\])+)'
+      captures:
+        1: markup.heading.envision
+        2: entity.name.class.envision
+      set:
+        - meta_scope: comment.block.envision
+        - include: test_control
+    - match: '(refresh|multisize|runstart|dashboard|optimmetrics|slice|stylecode|trans|warn|error)\b'
       scope: markup.heading.envision
       set:
         - meta_scope: comment.block.envision
         - include: test_control
-    - match: '[a-z]+'
+    - match: '[a-zA-Z0-9]+'
       scope: invalid.envision
       set:
         - meta_scope: comment.block.envision
