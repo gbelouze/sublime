@@ -31,15 +31,95 @@ contexts:
     - include: strings
     - include: ident
 
-  declare_ident:
-    - match: '\b[a-zA-Z0-9_]+\b'
-      scope: entity.name.class.envision
+
+###### Function definition ######
+
+  def:
+    - match: '\bdef\b'
+      scope: keyword.declaration.def.envision
+      push:
+        - match: '\b(((autodiff )?pure)|process)\b'
+          scope: meta.tag.def.envision
+          set:
+            - inside_def
+        - match: '\S+'
+          scope: invalid.def_tag.envision
+          pop: true
+
+  inside_def:
+    - match: '\b([a-zA-Z0-9_]+)(\()'
+      captures:
+        1: entity.name.function.envision
+        2: punctuation.section.parens.begin.def_args.envision
+      set: inside_def_args
+    - match: '\S+'
+      scope: invalid.def.envision
       pop: true
 
-  declare_function_ident:
-    - include: autodiff
+  inside_def_args:
+    - match: '\)'
+      scope: punctuation.section.parens.end.def_args.envision
+      pop: true
+    - match: ':'
+      scope: punctuation.separator.key-value.def_args.envision
+    - match: ','
+      scope: punctuation.separator.sequence.def_args.envision
+    - include: type
     - match: '\b[a-zA-Z0-9_]+\b'
-      scope: entity.name.function.envision
+      scope: entity.name.def_args.envision
+
+###### autodiff #####
+
+  autodiff:
+    - match: '\bautodiff\b'
+      scope: keyword.declaration.envision
+      push:
+        - inside_autodiff
+        - autodiff_observation_table
+
+  autodiff_observation_table:
+    - match: '\b[a-zA-Z0-9_]+\b'
+      scope: entity.name.class.autodiff_observation.envision
+      pop: true
+    - match: '\S+'
+      scope: invalid.autodiff.envision
+      pop: true
+
+
+  inside_autodiff:
+    - meta_scope: meta.function.parameters.autodiff.envision
+    - match: '\bwith\b'
+      scope: keyword.control.envision
+      set: main
+    - match: '\b(mode|learningRate|epochs|validation|batch|optimiser|forwardLaw)(:)'
+      captures:
+        1: variable.parameter.autodiff.envision
+        2: punctuation.separator.key-value.autodiff_args.envision
+    - include: base
+
+###### show #####
+
+  show:
+    - match: '\bshow\b'
+      scope: keyword.declaration.show.envision
+      push:
+        - match: '\b(barchart|label|linechart|piechart|scalar|table)\b'
+          scope: keyword.declaration.interface.show_type.envision
+          pop: true
+        - match: '\S+'
+          scope: invalid.show_type.envision
+          pop: true
+
+
+###### Miscellaneous #####
+
+  type:
+    - match: '\b(number|text|date|boolean|markdown)\b'
+      scope: entity.name.type.envision
+
+  table_name:
+    - match: '\b[A-Z][a-zA-Z0-9_]*\b'
+      scope: entity.name.class.table.envision
       pop: true
 
   ident:
@@ -51,46 +131,12 @@ contexts:
     - match: '\b[a-zA-Z0-9_]+\b'
       scope: entity.name.envision
 
-  autodiff:
-    - match: '\bautodiff\b'
-      scope: keyword.declaration.envision
-      push:
-        - inside_autodiff_decl
-        - declare_ident
-
-  inside_autodiff_decl:
-    - meta_scope: meta.function.parameters.envision
-    - match: '\bwith\b'
-      scope: keyword.control.envision
-      set: main
-    - match: '\b(mode|learningRate|epochs|validation|batch)\b'
-      scope: variable.parameter.envision
-    - include: base
-
   table:
     - match: '\btable\b'
-      scope: keyword.declaration.envision
+      scope: keyword.declaration.table.envision
       push:
-        - declare_ident
+        - table_name
 
-  show:
-    - match: '\bshow\b'
-      scope: keyword.declaration.envision
-      push:
-        - declare_function_ident
-
-  def:
-    - match: '\b(def) (autodiff) (pure)\b'
-      captures:
-        1: keyword.declaration.envision
-        2: meta.tag.envision
-        3: meta.tag.envision
-      push:
-        - declare_function_ident
-    - match: '\bdef\b'
-      scope: keyword.declaration.envision
-      push:
-        - declare_function_ident
 
   brackets:
     - match: '\('
@@ -122,21 +168,18 @@ contexts:
       scope: punctuation.separator.key-value.envision
     - match: '(==)|(>=)|(<=)|<|>'
       scope: punctuation.comparison.envision
+    - match: '->'
+      scope: punctuation.separator.match-definition.envision
     - match: '='
       scope: punctuation.definition.envision
     - match: '\b(not|or|and)\b'
       scope: keyword.operator.logical.envision
-    - match: 'mod|[+-/\\*]'
+    - match: 'mod|[+-/\\*^]'
       scope: keyword.operator.arithmetic.envision
     - match: ','
       scope: punctuation.separator.sequence.envision
 
   keywords:
-    # Keywords are if, else for and while.
-    # Note that blackslashes don't need to be escaped within single quoted
-    # strings in YAML. When using single quoted strings, only single quotes
-    # need to be escaped: this is done by using two single quotes next to each
-    # other.
     - match: '\b(when|where|order|with|into|by|at|as|desc)\b'
       scope: keyword.control.envision
     - match: '\b(const|group|keep|else|return|draw|loop|params|match|span|expect|read|each|loop|default|if|sort|over|cross|scan|import|export|montecarlo|sample|then|schema|write|delete)\b'
@@ -187,19 +230,21 @@ contexts:
   strings:
     # Strings begin and end with quotes, and use backslashes as an escape
     # character.
-    - match: '"'
+    - match: \"|\'
       scope: punctuation.definition.string.begin.envision
       push: inside_string
 
   inside_string:
     - meta_include_prototype: false
-    - meta_scope: string.quoted.double.envision
+    - meta_scope: string.quoted.envision
     - match: '\{'
       scope: punctuation.section.interpolation.begin.envision
       set: interpolate
+    - match: '\.\.'
+      scope: meta.path.envision
     - match: '\.'
       scope: constant.character.escape.envision
-    - match: '"'
+    - match: \"|\'
       scope: punctuation.definition.string.end.envision
       pop: true
 
@@ -241,15 +286,18 @@ contexts:
         1: markup.heading.envision
         2: entity.name.class.envision
       set:
+        - meta_include_prototype: false
         - meta_scope: comment.block.envision
         - include: test_control
-    - match: '(refresh|multisize|runstart|dashboard|optimmetrics|slice|stylecode|trans|warn|error)\b'
+    - match: '(refresh|noimplicitread|multisize|runstart|dashboard|optimmetrics|slice|stylecode|trans|warn|error|export|delete)\b'
       scope: markup.heading.envision
       set:
+        - meta_include_prototype: false
         - meta_scope: comment.block.envision
         - include: test_control
     - match: '[a-zA-Z0-9]+'
       scope: invalid.envision
       set:
+        - meta_include_prototype: false
         - meta_scope: comment.block.envision
         - include: test_control
